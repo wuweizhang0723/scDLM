@@ -1,5 +1,4 @@
-# scDLM
-single-cell DNA Language Model
+# scDLM - Single-cell DNA Language Model
 
 Install conda environment
 ```
