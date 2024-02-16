@@ -18,6 +18,8 @@ class Base(pl.LightningModule):
     def __init__(self) -> None:
         super().__init__()
         self.save_hyperparameters()
+        self.validation_step_outputs = []
+        self.test_step_outputs = []
 
     def forward(self, x):
         return NotImplementedError
@@ -32,7 +34,7 @@ class Base(pl.LightningModule):
                     optimizer,
                     patience=3,
                 ),
-                "monitor": " val_loss",
+                "monitor": "val_loss",
             }
         elif self.hparams.scheduler == "cycle":
             lr_scheduler = {
@@ -65,10 +67,12 @@ class Base(pl.LightningModule):
 
         self.log("val_loss", loss)
 
-        return torch.cat((y_hat, y), dim=1)
+        result = torch.cat((y_hat, y), dim=1)
+        self.validation_step_outputs.append(result)
+        return result
     
-    def validation_epoch_end(self, validation_step_outputs):
-        all_data = torch.cat(validation_step_outputs, dim=0).cpu().numpy()
+    def on_validation_epoch_end(self):
+        all_data = torch.cat(self.validation_step_outputs, dim=0).cpu().numpy()
         all_pred = all_data[:, :2714]
         all_truth = all_data[:, 2714:]
 
@@ -76,11 +80,15 @@ class Base(pl.LightningModule):
         for i in range(2714):  # the number of cells
             truth = all_truth[:, i]
             pred = all_pred[:, i]
-            score = metrics.roc_auc_score(truth, pred)
-            avg_auc_score += score
+            try:
+                score = metrics.roc_auc_score(truth, pred)
+                avg_auc_score += score
+            except ValueError:
+                pass
         avg_auc_score = avg_auc_score / 2714
 
         self.log("val_avg_auc_score", avg_auc_score)
+        self.validation_step_outputs.clear()  # free memory
 
     def test_step(self, batch, batch_idx):
         x, y = batch
@@ -98,10 +106,12 @@ class Base(pl.LightningModule):
         FP = len(y_hat[(y_hat==1) & (y==0)])
         FN = len(y_hat[(y_hat==0) & (y==1)])
 
-        return torch.Tensor([[TP, TN, FP, FN]])
+        result = torch.Tensor([[TP, TN, FP, FN]])
+        self.test_step_outputs.append(result)
+        return result
     
-    def test_epoch_end(self, test_step_outputs):
-        all_data = torch.cat(test_step_outputs, dim=0)
+    def on_test_epoch_end(self):
+        all_data = torch.cat(self.test_step_outputs, dim=0)
         sum_data = torch.sum(all_data, dim=0)
 
         TP = sum_data[0]
@@ -134,17 +144,41 @@ class Transformer(Base):
         hidden_size=256,
         dropout=0.2,
         h_layers=2,
-        input_length=600 * 2,
+        input_length=1344,
         pooling_type="avg",
         padding="same",
         attention_layers=2,
         learning_rate=1e-3,
         num_rel_pos_features=66, ##############################
+        scheduler="plateau"
     ):
         super().__init__()
         self.save_hyperparameters()
 
         self.conv0 = ConvBlock(4, kernel_number, kernel_length, padding=padding)
+
+        self.attentionlayer0 = nn.ModuleList()
+        self.attentionlayer0.append(
+                nn.Sequential(
+                    Residual(
+                        Attention(
+                            dim=kernel_number,  # dimension of the last out channel
+                            num_rel_pos_features=num_rel_pos_features,
+                        ),
+                    ),
+                    nn.LayerNorm(kernel_number),
+                    Residual(
+                        nn.Sequential(
+                            nn.Linear(kernel_number, kernel_number * 2),
+                            nn.Dropout(dropout),
+                            nn.ReLU(),
+                            nn.Linear(kernel_number * 2, kernel_number),
+                            nn.Dropout(dropout),
+                        )
+                    ),
+                    nn.LayerNorm(kernel_number),
+                )
+            )
 
         self.convlayers = nn.ModuleList()
         self.convlayers.append(
@@ -207,11 +241,11 @@ class Transformer(Base):
                 )
             )
 
-        self.fc0 = nn.Sequential(nn.Linear(fc_dim * filter_number, hidden_size), nn.ReLU())
+        self.fc0 = nn.Sequential(nn.Linear(fc_dim * filter_number, hidden_size), GELU())
 
         self.fclayers = nn.ModuleList(
             nn.Sequential(
-                nn.Linear(hidden_size, hidden_size), nn.ReLU(), nn.Dropout(dropout)
+                nn.Linear(hidden_size, hidden_size), GELU(), nn.Dropout(dropout)
             )
             for layer in range(h_layers)
         )
@@ -219,8 +253,14 @@ class Transformer(Base):
         self.out = nn.Linear(hidden_size, 2714)
 
     def forward(self, x):
+        x = torch.permute(x, (0, 2, 1))  # (batch_size, channel, length)
         x = self.conv0(x)
 
+        # x = torch.permute(x, (0, 2, 1))
+        # for layer in self.attentionlayer0:
+        #     x = layer(x)
+
+        # x = torch.permute(x, (0, 2, 1))
         for layer in self.convlayers:
             x = layer(x)
 

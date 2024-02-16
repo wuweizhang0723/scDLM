@@ -15,3 +15,7 @@ pip install -e .
 * Google drive: https://drive.google.com/drive/folders/1DvicjZRVsugAhMHMQrHxwMBo_tjPotZ9?usp=sharing
 * hg38 reference genome is used.
 * Download the data from google drive and create a `data` folder to save it.
+
+## Model Training
+* `cd scripts`
+* `bash train.sh`

@@ -3,16 +3,16 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 
 
-def load_data2(
+def load_data(
     batch_size=256,
     num_workers=12,
     persistent_workers=False,
     RC_mode=False, #########
 ):
     """Load data from file."""
-    X_train = np.load('./data/X_train.npy')
-    Y_train = np.load('./data/Y_train.npy')
-    train_dataset = TensorDataset(torch.tensor(X_train).float(), torch.tensor(Y_train).long())
+    X_train = np.load('../data/X_train.npy')
+    Y_train = np.load('../data/y_train.npy')
+    train_dataset = TensorDataset(torch.tensor(X_train).float(), torch.tensor(Y_train).float())
     train_loader = DataLoader(
         train_dataset, 
         batch_size=batch_size, 
@@ -21,9 +21,9 @@ def load_data2(
         persistent_workers=persistent_workers
     )
 
-    X_val = np.load('./data/X_val.npy')
-    Y_val = np.load('./data/Y_val.npy')
-    val_dataset = TensorDataset(torch.tensor(X_val).float(), torch.tensor(Y_val).long())
+    X_val = np.load('../data/X_val.npy')
+    Y_val = np.load('../data/y_val.npy')
+    val_dataset = TensorDataset(torch.tensor(X_val).float(), torch.tensor(Y_val).float())
     val_loader = DataLoader(
         val_dataset, 
         batch_size=batch_size, 
@@ -32,9 +32,9 @@ def load_data2(
         persistent_workers=persistent_workers
     )
 
-    X_test = np.load('./data/X_test.npy')
-    Y_test = np.load('./data/Y_test.npy')
-    test_dataset = TensorDataset(torch.tensor(X_test).float(), torch.tensor(Y_test).long())
+    X_test = np.load('../data/X_test.npy')
+    Y_test = np.load('../data/y_test.npy')
+    test_dataset = TensorDataset(torch.tensor(X_test).float(), torch.tensor(Y_test).float())
     test_loader = DataLoader(
         test_dataset, 
         batch_size=batch_size, 
