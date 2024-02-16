@@ -157,28 +157,28 @@ class Transformer(Base):
 
         self.conv0 = ConvBlock(4, kernel_number, kernel_length, padding=padding)
 
-        self.attentionlayer0 = nn.ModuleList()
-        self.attentionlayer0.append(
-                nn.Sequential(
-                    Residual(
-                        Attention(
-                            dim=kernel_number,  # dimension of the last out channel
-                            num_rel_pos_features=num_rel_pos_features,
-                        ),
-                    ),
-                    nn.LayerNorm(kernel_number),
-                    Residual(
-                        nn.Sequential(
-                            nn.Linear(kernel_number, kernel_number * 2),
-                            nn.Dropout(dropout),
-                            nn.ReLU(),
-                            nn.Linear(kernel_number * 2, kernel_number),
-                            nn.Dropout(dropout),
-                        )
-                    ),
-                    nn.LayerNorm(kernel_number),
-                )
-            )
+        # self.attentionlayer0 = nn.ModuleList()
+        # self.attentionlayer0.append(
+        #         nn.Sequential(
+        #             Residual(
+        #                 Attention(
+        #                     dim=kernel_number,  # dimension of the last out channel
+        #                     num_rel_pos_features=num_rel_pos_features,
+        #                 ),
+        #             ),
+        #             nn.LayerNorm(kernel_number),
+        #             Residual(
+        #                 nn.Sequential(
+        #                     nn.Linear(kernel_number, kernel_number * 2),
+        #                     nn.Dropout(dropout),
+        #                     nn.ReLU(),
+        #                     nn.Linear(kernel_number * 2, kernel_number),
+        #                     nn.Dropout(dropout),
+        #                 )
+        #             ),
+        #             nn.LayerNorm(kernel_number),
+        #         )
+        #     )
 
         self.convlayers = nn.ModuleList()
         self.convlayers.append(
