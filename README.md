@@ -19,3 +19,6 @@ pip install -e .
 ## Model Training
 * `cd scripts`
 * `bash train.sh`
+
+## Model Evaluation
+* `notebook/performance_evaluation.ipynb`
